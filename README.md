@@ -4,9 +4,12 @@ This repository contains code to compare several spectrum similarity scores for 
 
 Similarity scores that are currently implemented are:
 
-- Cosine similarity
-- Modified cosine similarity
-- Neutral loss similarity
+- Cosine similarity <br/>
+   Stein, S. E. & Scott, D. R. Optimization and testing of mass spectral library search algorithms for compound identification. _Journal of the American Society for Mass Spectrometry_ **5**, 859–866 (1994). [doi:10.1016/1044-0305(94)87009-8](https://doi.org/10.1016/1044-0305(94)87009-8)
+- Modified cosine similarity <br/>
+   Watrous, J. _et al_. Mass spectral molecular networking of living microbial colonies. _Proceedings of the National Academy of Sciences_ **109**, E1743–E1752 (2012). [doi:10.1073/pnas.1203689109](https://doi.org/10.1073/pnas.1203689109)
+- Neutral loss similarity <br/>
+   Aisporna, A. _et al_. Neutral loss mass spectral data enhances molecular similarity analysis in METLIN. _Journal of the American Society for Mass Spectrometry_ **33**, 530–534 (2022). [doi:10.1021/jasms.1c00343](https://doi.org/10.1021/jasms.1c00343)
 - Modified neutral loss similarity
 
 ## Installation
