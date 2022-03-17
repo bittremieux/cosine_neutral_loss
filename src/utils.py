@@ -1,5 +1,3 @@
-import copy
-
 import numpy as np
 import spectrum_utils.spectrum as sus
 
@@ -20,14 +18,20 @@ def spec_to_neutral_loss(spectrum: sus.MsmsSpectrum) -> sus.MsmsSpectrum:
         The converted neutral loss spectrum.
     """
     # Add ghost peak at 0 m/z to anchor the m/z range after transformation.
-    spectrum = copy.copy(spectrum)
-    spectrum._inner._mz = np.insert(spectrum.mz, 0, [0])
-    spectrum._inner._intensity = np.insert(spectrum.intensity, 0, [0])
+    mz, intensity = np.copy(spectrum.mz), np.copy(spectrum.intensity)
+    mz, intensity = np.insert(mz, 0, [0]), np.insert(intensity, 0, [0])
     # Restrict to the precursor m/z to avoid getting negative peaks in the
     # neutral loss spectrum.
-    spectrum = spectrum.set_mz_range(0, spectrum.precursor_mz)
+    mask = mz < spectrum.precursor_mz
+    mz, intensity = mz[mask], intensity[mask]
     # Create neutral loss peaks and make sure the peaks are in ascending m/z
     # order.
-    spectrum._inner._mz = (spectrum.precursor_mz - spectrum.mz)[::-1]
-    spectrum._inner._intensity = spectrum.intensity[::-1]
-    return spectrum
+    mz, intensity = (spectrum.precursor_mz - mz)[::-1], intensity[::-1]
+    return sus.MsmsSpectrum(
+        spectrum.identifier,
+        spectrum.precursor_mz,
+        spectrum.precursor_charge,
+        np.ascontiguousarray(mz),
+        np.ascontiguousarray(intensity),
+        spectrum.retention_time,
+    )
