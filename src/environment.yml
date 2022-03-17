@@ -1,0 +1,14 @@
+name: cosine_neutral_loss
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - black=22.1.0
+  - matplotlib=3.5.1
+  - numba=0.55.1
+  - numpy=1.21.5
+  - pip=22.0.4
+  - python=3.10
+  - pip:
+    - git+https://github.com/bittremieux/spectrum_utils.git@d1cd4b40e86188971d5736b00fdbe2a2060d04f7

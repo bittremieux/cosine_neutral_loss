@@ -9,6 +9,14 @@ Similarity scores that are currently implemented are:
 - Neutral loss similarity
 - Modified neutral loss similarity
 
+## Installation
+
+Create a conda enviroment and install all required dependencies using the provided `environment.yml` file:
+
+```
+conda env create -f https://raw.githubusercontent.com/bittremieux/cosine_neutral_loss/master/environment.yml
+```
+
 ## Usage
 
 Code example to create mirror plots using different similarity scores:
