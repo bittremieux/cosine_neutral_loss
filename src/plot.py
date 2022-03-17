@@ -14,45 +14,49 @@ FragmentAnnotation = collections.namedtuple("FragmentAnnotation", ["ion_type"])
 FragmentAnnotation.__str__ = lambda _: ""
 
 
-def plot_cosine(
+def plot_mirror(
     spectrum1: sus.MsmsSpectrum,
     spectrum2: sus.MsmsSpectrum,
+    score: str,
     filename: str,
-    modified: bool = False,
-):
+) -> None:
+    """
+    Plot mirror spectra showing peak matches.
+
+    Parameters
+    ----------
+    spectrum1 : sus.MsmsSpectrum
+        The first spectrum.
+    spectrum2 : sus.MsmsSpectrum
+        The second spectrum.
+    score : str
+        The similarity score used. Valid values are "cosine",
+        "modified_cosine", and "neutral_loss".
+    filename : str
+        Filename to save the figure.
+    """
+    fragment_mz_tol = 0.05
+
     fig, ax = plt.subplots(figsize=(8, 4))
 
-    if not modified:
-        sim = similarity.cosine(spectrum1, spectrum2, 0.05)
-        ax.set_title(f"Cosine similarity = {sim[0]:.4f}")
+    if score == "cosine":
+        sim = similarity.cosine(spectrum1, spectrum2, fragment_mz_tol)
+        title = f"Cosine similarity = {sim[0]:.4f}"
+    elif score == "modified_cosine":
+        sim = similarity.modified_cosine(spectrum1, spectrum2, fragment_mz_tol)
+        title = f"Modified cosine similarity = {sim[0]:.4f}"
+    elif score == "neutral_loss":
+        sim = similarity.neutral_loss(spectrum1, spectrum2, fragment_mz_tol)
+        title = f"Neutral loss similarity = {sim[0]:.4f}"
+        spectrum1 = utils.spec_to_neutral_loss(spectrum1)
+        spectrum2 = utils.spec_to_neutral_loss(spectrum2)
     else:
-        sim = similarity.modified_cosine(spectrum1, spectrum2, 0.05)
-        ax.set_title(f"Modified cosine similarity = {sim[0]:.4f}")
+        raise ValueError("Unknown score specified")
 
     _annotate_matching_peaks(spectrum1, spectrum2, sim[1])
 
     sup.mirror(spectrum1, spectrum2, ax=ax)
-
-    plt.savefig(filename, dpi=300, bbox_inches="tight")
-    plt.close()
-
-
-def plot_neutral_loss(
-    spectrum1: sus.MsmsSpectrum,
-    spectrum2: sus.MsmsSpectrum,
-    filename: str,
-):
-    fig, ax = plt.subplots(figsize=(8, 4))
-
-    sim = similarity.neutral_loss(spectrum1, spectrum2, 0.05)
-    ax.set_title(f"Neutral loss similarity = {sim[0]:.4f}")
-
-    spectrum1 = utils.spec_to_neutral_loss(spectrum1)
-    spectrum2 = utils.spec_to_neutral_loss(spectrum2)
-
-    _annotate_matching_peaks(spectrum1, spectrum2, sim[1])
-
-    sup.mirror(spectrum1, spectrum2, ax=ax)
+    ax.set_title(title)
 
     plt.savefig(filename, dpi=300, bbox_inches="tight")
     plt.close()

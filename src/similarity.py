@@ -1,5 +1,4 @@
 import collections
-import copy
 from typing import List, Tuple
 
 import numba as nb
