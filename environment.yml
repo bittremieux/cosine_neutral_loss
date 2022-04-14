@@ -5,10 +5,15 @@ channels:
   - defaults
 dependencies:
   - black=22.1.0
+  - jupyter=1.0.0
   - matplotlib=3.5.1
   - numba=0.55.1
   - numpy=1.21.5
+  - pandas=1.4.1
   - pip=22.0.4
+  - pyteomics=4.5.3
   - python=3.10
+  - seaborn=0.11.2
+  - tqdm=4.64.0
   - pip:
     - git+https://github.com/bittremieux/spectrum_utils.git@d1cd4b40e86188971d5736b00fdbe2a2060d04f7
