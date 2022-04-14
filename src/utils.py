@@ -20,10 +20,6 @@ def spec_to_neutral_loss(spectrum: sus.MsmsSpectrum) -> sus.MsmsSpectrum:
     # Add ghost peak at 0 m/z to anchor the m/z range after transformation.
     mz, intensity = np.copy(spectrum.mz), np.copy(spectrum.intensity)
     mz, intensity = np.insert(mz, 0, [0]), np.insert(intensity, 0, [0])
-    # Restrict to the precursor m/z to avoid getting negative peaks in the
-    # neutral loss spectrum.
-    mask = mz < spectrum.precursor_mz
-    mz, intensity = mz[mask], intensity[mask]
     # Create neutral loss peaks and make sure the peaks are in ascending m/z
     # order.
     mz, intensity = (spectrum.precursor_mz - mz)[::-1], intensity[::-1]

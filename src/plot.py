@@ -65,6 +65,11 @@ def plot_mirror(
     sup.mirror(spectrum1, spectrum2, ax=ax)
     ax.set_title(title)
 
+    # Neutral loss can lead to negative m/z values.
+    min_mz = min(spectrum1.mz[0], spectrum2.mz[0])
+    max_mz = max(spectrum1.mz[-1], spectrum2.mz[-1])
+    ax.set_xlim(min_mz - max(min_mz / 10, 50), max_mz + max(max_mz / 10, 50))
+
     plt.savefig(filename, dpi=300, bbox_inches="tight")
     plt.close()
 
