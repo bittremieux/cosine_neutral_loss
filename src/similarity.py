@@ -213,6 +213,9 @@ def _cosine_fast(
                 index += 1
                 other_peak_i = other_peak_index[cpi] + index
 
+    score, peaks_matched = 0., []
+    if len(peak_matches) == 0:
+        return score, peaks_matched
     # noinspection PyUnresolvedReferences
     data, row_ind, col_ind = nb.typed.List(), nb.typed.List(), nb.typed.List()
     for (row_i, col_i), d in peak_matches.items():
@@ -222,7 +225,6 @@ def _cosine_fast(
     with nb.objmode(perm="int32[:]"):
         adj_matrix = scipy.sparse.csr_matrix((data, (row_ind, col_ind)))
         perm = scipy.sparse.csgraph.maximum_bipartite_matching(adj_matrix)
-    score, peaks_matched = 0., []
     for col_i, row_i in enumerate(perm):
         if row_i != -1:
             peaks_matched.append((row_i, col_i))
