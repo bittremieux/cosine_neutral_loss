@@ -228,4 +228,4 @@ def _cosine_fast(
             peaks_matched.append((row_i, col_i))
             score += peak_matches[(row_i, col_i)]
 
-    return score, peak_matches
+    return score, peaks_matched
