@@ -95,35 +95,6 @@ def neutral_loss(
     return _cosine(spectrum1, spectrum2, fragment_mz_tolerance, False)
 
 
-def modified_neutral_loss(
-    spectrum1: sus.MsmsSpectrum,
-    spectrum2: sus.MsmsSpectrum,
-    fragment_mz_tolerance: float,
-) -> Tuple[float, List[Tuple[int, int]]]:
-    """
-    Compute the neutral loss similarity between the given spectra.
-
-    Parameters
-    ----------
-    spectrum1 : sus.MsmsSpectrum
-        The first spectrum.
-    spectrum2 : sus.MsmsSpectrum
-        The second spectrum.
-    fragment_mz_tolerance : float
-        The fragment m/z tolerance used to match peaks.
-
-    Returns
-    -------
-    Tuple[float, List[Tuple[int, int]]]
-        A tuple consisting of (i) the neutral loss similarity between both
-        spectra, and (ii) the indexes of matching peaks in both spectra.
-    """
-    # Convert peaks to neutral loss.
-    spectrum1 = utils.spec_to_neutral_loss(spectrum1)
-    spectrum2 = utils.spec_to_neutral_loss(spectrum2)
-    return _cosine(spectrum1, spectrum2, fragment_mz_tolerance, True)
-
-
 def _cosine(
     spectrum1: sus.MsmsSpectrum,
     spectrum2: sus.MsmsSpectrum,
