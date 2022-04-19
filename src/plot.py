@@ -60,7 +60,7 @@ def plot_mirror(
     else:
         raise ValueError("Unknown score specified")
 
-    _annotate_matching_peaks(spectrum1, spectrum2, sim[1])
+    _annotate_matching_peaks(spectrum1, spectrum2, *sim[1])
 
     sup.mirror(spectrum1, spectrum2, ax=ax)
     ax.set_title(title)
@@ -77,7 +77,8 @@ def plot_mirror(
 def _annotate_matching_peaks(
     spectrum1: sus.MsmsSpectrum,
     spectrum2: sus.MsmsSpectrum,
-    peak_matches: List[Tuple[int, int]],
+    peak_matches1: np.ndarray,
+    peak_matches2: np.ndarray,
 ) -> None:
     """
     Somewhat hacky way to get spectrum_utils to annotate matching peaks.
@@ -88,11 +89,13 @@ def _annotate_matching_peaks(
         The first spectrum.
     spectrum2 : sus.MsmsSpectrum
         The second spectrum.
-    peak_matches : List[Tuple[int, int]
-        Tuples with matching peak indexes between both spectra.
+    peak_matches1 : np.ndarray
+        Matching peak indexes in the first spectrum.
+    peak_matches2 : np.ndarray
+        Matching peak indexes in the second spectrum.
     """
     spectrum1._annotation = np.full_like(spectrum1.mz, None, object)
     spectrum2._annotation = np.full_like(spectrum2.mz, None, object)
-    for match1, match2 in peak_matches:
+    for match1, match2 in zip(peak_matches1, peak_matches2):
         spectrum1._annotation[match1] = FragmentAnnotation(ion_type="b")
         spectrum2._annotation[match2] = FragmentAnnotation(ion_type="y")
