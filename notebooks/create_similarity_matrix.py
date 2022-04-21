@@ -23,13 +23,13 @@ library_file = "../data/BILELIB19.mgf"
 # library_file = "../data/20220418_ALL_GNPS_NO_PROPOGATED.mgf"
 
 # analysis name
-analysis_name = "test"
+analysis_name = "oxygen"
 
 # square root transformation of intensities is often performed to limit the impact of high abundant signals
 apply_sqrt = False
 
 # size of subset of spectral pairs
-n_spectral_pairs = 1000
+n_spectral_pairs = 500000
 
 # minimum number of signals only removes the spectra with less
 min_n_signals = 6
@@ -44,21 +44,21 @@ max_mz_delta = 200
 specific_mod_mz = 15.9949
 # specific_mod_mz = -1
 
+library_file_name_without_ext = Path(library_file).stem
 # analysis ID is used for file export
 if specific_mod_mz <= 0:
-    analysis_id = "{}_sqrt_{}_{}pairs_{}min_signals_{}maxdelta" \
-        .format(analysis_name, apply_sqrt, n_spectral_pairs, min_n_signals, max_mz_delta).replace(".", "i")
+    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}maxdelta" \
+        .format(library_file_name_without_ext, analysis_name, apply_sqrt, n_spectral_pairs, min_n_signals, max_mz_delta).replace(".", "i")
 else:
-    analysis_id = "{}_sqrt_{}_{}pairs_{}min_signals_{}specific_delta" \
-        .format(analysis_name, apply_sqrt, n_spectral_pairs, min_n_signals, specific_mod_mz).replace(".", "i")
-
-library_file_name_without_ext = Path(library_file).stem
+    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}specific_delta" \
+        .format(library_file_name_without_ext, analysis_name, apply_sqrt, n_spectral_pairs, min_n_signals, specific_mod_mz).replace(".", "i")
 
 # output filename of pairs only with pair selection relevant parameters:
 pairs_filename = "temp/{}_pairs.parquet".format(analysis_id).replace("sqrt_True_", "").replace("sqrt_False_", "")
 spectra_filename = "tempspectra/spectra_{}_{}min_signals_sqrt_{}.parquet".format(library_file_name_without_ext, min_n_signals, apply_sqrt)
 
 def main():
+    spectra = None
     precursor_mz_list = None
     if (os.path.isfile(pairs_filename) == False) or (os.path.isfile(spectra_filename) == False):
         # missing either the spectra or pairs file
@@ -73,7 +73,9 @@ def main():
     pairs_df = load_or_compute_pairs_df(precursor_mz_list)
     print ("Comparing {} pairs".format(len(pairs_df)))
 
-    similarities = compute_similarity_parallel(pairs_df)
+    # can run on single thread or parallel
+    # similarities = compute_similarity_parallel(pairs_df)
+    similarities = compute_similarity(spectra, pairs_df)
     save_results(similarities)
 
 
@@ -238,6 +240,8 @@ def load_spectra_compute_similarity(pairs_df):
 
 
 def compute_similarity(spectra, pairs_df):
+    if spectra is None:
+        spectra = import_from_mgf()
     # common columns
     ids_a, ids_b, delta_mz = [], [], []
     # lists of SimilarityTuples
