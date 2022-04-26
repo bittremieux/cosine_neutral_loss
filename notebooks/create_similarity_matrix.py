@@ -13,6 +13,7 @@ import pyteomics.mgf
 import tqdm
 import spectrum_utils.spectrum as sus
 import similarity
+import bile_mods
 # from multiprocessing import Pool, freeze_support
 # from multiprocessing import freeze_support
 from functools import partial
@@ -23,10 +24,10 @@ library_file = "../data/BILELIB19.mgf"
 # library_file = "../data/20220418_ALL_GNPS_NO_PROPOGATED.mgf"
 
 # analysis name
-analysis_name = "oxygen"
+analysis_name = "as_exchange"
 
 # square root transformation of intensities is often performed to limit the impact of high abundant signals
-apply_sqrt = False
+apply_sqrt = True
 
 # size of subset of spectral pairs
 n_spectral_pairs = 500000
@@ -41,17 +42,23 @@ max_mz_delta = 200
 # if defined, we will only search for specific delta m/z between two spectra
 # 16 oxygen 15.994914
 # otherwise define as -1
-specific_mod_mz = 15.9949
-# specific_mod_mz = -1
+# specific_mod_mz = 15.9949
+specific_mod_mz = -1
+
+# free bile acids compared to conjugated with amino acids
+# or different delta mz between different conjugated bile acids
+# mod_list = np.empty(0, float)
+# mod_list = bile_mods.get_as_mods()
+mod_list = bile_mods.get_as_exchange()
 
 library_file_name_without_ext = Path(library_file).stem
 # analysis ID is used for file export
 if specific_mod_mz <= 0:
-    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}maxdelta" \
-        .format(library_file_name_without_ext, analysis_name, apply_sqrt, n_spectral_pairs, min_n_signals, max_mz_delta).replace(".", "i")
+    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}maxdelta_{}mods" \
+        .format(library_file_name_without_ext, analysis_name, apply_sqrt, n_spectral_pairs, min_n_signals, max_mz_delta, len(mod_list)).replace(".", "i")
 else:
-    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}specific_delta" \
-        .format(library_file_name_without_ext, analysis_name, apply_sqrt, n_spectral_pairs, min_n_signals, specific_mod_mz).replace(".", "i")
+    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}specific_delta_{}mods" \
+        .format(library_file_name_without_ext, analysis_name, apply_sqrt, n_spectral_pairs, min_n_signals, specific_mod_mz, len(mod_list)).replace(".", "i")
 
 # output filename of pairs only with pair selection relevant parameters:
 pairs_filename = "temp/{}_pairs.parquet".format(analysis_id).replace("sqrt_True_", "").replace("sqrt_False_", "")
@@ -198,14 +205,23 @@ def generate_pairs(precursor_mz):
     -------
 
     """
+    check_mods = len(mod_list) > 0
     for i in range(len(precursor_mz)):
         j = i + 1
         while (j < len(precursor_mz)) and (precursor_mz[j] <= precursor_mz[i] + max_mz_delta):
             delta = precursor_mz[j] - precursor_mz[i]
             if delta > 1:
                 # list is sorted by precursor mz so j always > i
+                # first check list of modifications, then specific
                 # select only one specific precursor mz differance or include all
-                if (specific_mod_mz < 0) or (abs(delta - specific_mod_mz) <= abs_mz_tolerance):
+                if check_mods:
+                  for mod_mz in mod_list:
+                      if (abs(delta - mod_mz) <= abs_mz_tolerance):
+                          yield i
+                          yield j
+                          break
+
+                elif (specific_mod_mz < 0) or (abs(delta - specific_mod_mz) <= abs_mz_tolerance):
                     yield i
                     yield j
             j += 1

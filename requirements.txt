@@ -9,4 +9,5 @@ pyteomics==4.5.3
 scipy==1.8.0
 seaborn==0.11.2
 tqdm==4.64.0
+pathos
 git+https://github.com/bittremieux/spectrum_utils.git@d1cd4b40e86188971d5736b00fdbe2a2060d04f7
