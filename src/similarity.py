@@ -15,16 +15,22 @@ SpectrumTuple = collections.namedtuple(
 
 #  return type
 SimilarityTuple = collections.namedtuple(
-    "SimilarityTuple", ["score", "matched_intensity", "max_contribution", "n_greq_2p", "matches"
-                        # ,"matched_indices", "matched_indices_other"
-                        ]
+    "SimilarityTuple",
+    [
+        "score",
+        "matched_intensity",
+        "max_contribution",
+        "n_greq_2p",
+        "matches"
+        # ,"matched_indices", "matched_indices_other"
+    ],
 )
 
 
 def cosine(
-        spectrum1: sus.MsmsSpectrum,
-        spectrum2: sus.MsmsSpectrum,
-        fragment_mz_tolerance: float,
+    spectrum1: sus.MsmsSpectrum,
+    spectrum2: sus.MsmsSpectrum,
+    fragment_mz_tolerance: float,
 ) -> SimilarityTuple:
     """
     Compute the cosine similarity between the given spectra.
@@ -48,9 +54,9 @@ def cosine(
 
 
 def modified_cosine(
-        spectrum1: sus.MsmsSpectrum,
-        spectrum2: sus.MsmsSpectrum,
-        fragment_mz_tolerance: float,
+    spectrum1: sus.MsmsSpectrum,
+    spectrum2: sus.MsmsSpectrum,
+    fragment_mz_tolerance: float,
 ) -> SimilarityTuple:
     """
     Compute the modified cosine similarity between the given spectra.
@@ -74,9 +80,9 @@ def modified_cosine(
 
 
 def neutral_loss(
-        spectrum1: sus.MsmsSpectrum,
-        spectrum2: sus.MsmsSpectrum,
-        fragment_mz_tolerance: float,
+    spectrum1: sus.MsmsSpectrum,
+    spectrum2: sus.MsmsSpectrum,
+    fragment_mz_tolerance: float,
 ) -> SimilarityTuple:
     """
     Compute the neutral loss similarity between the given spectra.
@@ -103,10 +109,10 @@ def neutral_loss(
 
 
 def _cosine(
-        spectrum1: sus.MsmsSpectrum,
-        spectrum2: sus.MsmsSpectrum,
-        fragment_mz_tolerance: float,
-        allow_shift: bool,
+    spectrum1: sus.MsmsSpectrum,
+    spectrum2: sus.MsmsSpectrum,
+    fragment_mz_tolerance: float,
+    allow_shift: bool,
 ) -> SimilarityTuple:
     """
     Compute the cosine similarity between the given spectra.
@@ -140,17 +146,15 @@ def _cosine(
         spectrum2.mz,
         np.copy(spectrum2.intensity) / np.linalg.norm(spectrum2.intensity),
     )
-    return _cosine_fast(
-        spec_tup1, spec_tup2, fragment_mz_tolerance, allow_shift
-    )
+    return _cosine_fast(spec_tup1, spec_tup2, fragment_mz_tolerance, allow_shift)
 
 
 @nb.njit(fastmath=True, boundscheck=False)
 def _cosine_fast(
-        spec: SpectrumTuple,
-        spec_other: SpectrumTuple,
-        fragment_mz_tolerance: float,
-        allow_shift: bool,
+    spec: SpectrumTuple,
+    spec_other: SpectrumTuple,
+    fragment_mz_tolerance: float,
+    allow_shift: bool,
 ) -> SimilarityTuple:
     """
     Compute the cosine similarity between the given spectra.
@@ -179,8 +183,8 @@ def _cosine_fast(
     # Account for unknown precursor charge (default: 1).
     precursor_charge = max(spec.precursor_charge, 1)
     precursor_mass_diff = (
-                                  spec.precursor_mz - spec_other.precursor_mz
-                          ) * precursor_charge
+        spec.precursor_mz - spec_other.precursor_mz
+    ) * precursor_charge
     # Only take peak shifts into account if the mass difference is relevant.
     num_shifts = 1
     if allow_shift and abs(precursor_mass_diff) >= fragment_mz_tolerance:
@@ -193,13 +197,13 @@ def _cosine_fast(
     # Find the matching peaks between both spectra.
     cost_matrix = np.zeros((len(spec.mz), len(spec_other.mz)), np.float32)
     for peak_index, (peak_mz, peak_intensity) in enumerate(
-            zip(spec.mz, spec.intensity)
+        zip(spec.mz, spec.intensity)
     ):
         # Advance while there is an excessive mass difference.
         for cpi in range(num_shifts):
             while other_peak_index[cpi] < len(spec_other.mz) - 1 and (
-                    peak_mz - fragment_mz_tolerance
-                    > spec_other.mz[other_peak_index[cpi]] + mass_diff[cpi]
+                peak_mz - fragment_mz_tolerance
+                > spec_other.mz[other_peak_index[cpi]] + mass_diff[cpi]
             ):
                 other_peak_index[cpi] += 1
         # Match the peaks within the fragment mass window if possible.
@@ -207,14 +211,12 @@ def _cosine_fast(
             index = 0
             other_peak_i = other_peak_index[cpi] + index
             while (
-                    other_peak_i < len(spec_other.mz)
-                    and abs(
-                peak_mz - (spec_other.mz[other_peak_i] + mass_diff[cpi])
-            )
-                    <= fragment_mz_tolerance
+                other_peak_i < len(spec_other.mz)
+                and abs(peak_mz - (spec_other.mz[other_peak_i] + mass_diff[cpi]))
+                <= fragment_mz_tolerance
             ):
                 cost_matrix[peak_index, other_peak_i] = (
-                        peak_intensity * spec_other.intensity[other_peak_i]
+                    peak_intensity * spec_other.intensity[other_peak_i]
                 )
                 index += 1
                 other_peak_i = other_peak_index[cpi] + index
@@ -230,7 +232,6 @@ def _cosine_fast(
     max_contribution = 0.0
     # signals with contribution to cosine score greater 5%
     n_greq_2p = 0
-
 
     row_mask = np.zeros_like(row_ind, np.bool_)
     col_mask = np.zeros_like(col_ind, np.bool_)
@@ -249,6 +250,11 @@ def _cosine_fast(
 
     if total_intensity > 0:
         matched_intensity = matched_intensity / total_intensity
-    return SimilarityTuple(score, matched_intensity, max_contribution, n_greq_2p, matches
-                           # , row_ind[row_mask], col_ind[col_mask]
-                           )
+    return SimilarityTuple(
+        score,
+        matched_intensity,
+        max_contribution,
+        n_greq_2p,
+        matches
+        # , row_ind[row_mask], col_ind[col_mask]
+    )

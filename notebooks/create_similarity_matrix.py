@@ -14,6 +14,7 @@ import tqdm
 import spectrum_utils.spectrum as sus
 import similarity
 import bile_mods
+
 # from multiprocessing import Pool, freeze_support
 # from multiprocessing import freeze_support
 from functools import partial
@@ -54,20 +55,43 @@ mod_list = bile_mods.get_as_exchange()
 library_file_name_without_ext = Path(library_file).stem
 # analysis ID is used for file export
 if specific_mod_mz <= 0:
-    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}maxdelta_{}mods" \
-        .format(library_file_name_without_ext, analysis_name, apply_sqrt, n_spectral_pairs, min_n_signals, max_mz_delta, len(mod_list)).replace(".", "i")
+    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}maxdelta_{}mods".format(
+        library_file_name_without_ext,
+        analysis_name,
+        apply_sqrt,
+        n_spectral_pairs,
+        min_n_signals,
+        max_mz_delta,
+        len(mod_list),
+    ).replace(".", "i")
 else:
-    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}specific_delta_{}mods" \
-        .format(library_file_name_without_ext, analysis_name, apply_sqrt, n_spectral_pairs, min_n_signals, specific_mod_mz, len(mod_list)).replace(".", "i")
+    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}specific_delta_{}mods".format(
+        library_file_name_without_ext,
+        analysis_name,
+        apply_sqrt,
+        n_spectral_pairs,
+        min_n_signals,
+        specific_mod_mz,
+        len(mod_list),
+    ).replace(".", "i")
 
 # output filename of pairs only with pair selection relevant parameters:
-pairs_filename = "temp/{}_pairs.parquet".format(analysis_id).replace("sqrt_True_", "").replace("sqrt_False_", "")
-spectra_filename = "tempspectra/spectra_{}_{}min_signals_sqrt_{}.parquet".format(library_file_name_without_ext, min_n_signals, apply_sqrt)
+pairs_filename = (
+    "temp/{}_pairs.parquet".format(analysis_id)
+    .replace("sqrt_True_", "")
+    .replace("sqrt_False_", "")
+)
+spectra_filename = "tempspectra/spectra_{}_{}min_signals_sqrt_{}.parquet".format(
+    library_file_name_without_ext, min_n_signals, apply_sqrt
+)
+
 
 def main():
     spectra = None
     precursor_mz_list = None
-    if (os.path.isfile(pairs_filename) == False) or (os.path.isfile(spectra_filename) == False):
+    if (os.path.isfile(pairs_filename) == False) or (
+        os.path.isfile(spectra_filename) == False
+    ):
         # missing either the spectra or pairs file
         spectra = import_from_mgf()
 
@@ -78,7 +102,7 @@ def main():
 
     # compute subset of pairs
     pairs_df = load_or_compute_pairs_df(precursor_mz_list)
-    print ("Comparing {} pairs".format(len(pairs_df)))
+    print("Comparing {} pairs".format(len(pairs_df)))
 
     # can run on single thread or parallel
     # similarities = compute_similarity_parallel(pairs_df)
@@ -108,7 +132,8 @@ def import_from_mgf():
                     # SPECTRUMID
                     # NAME
                     # SMILES
-                ))
+                )
+            )
         return spectra
     except:
         print("importing data from{}".format(library_file))
@@ -142,7 +167,11 @@ def import_from_mgf():
                         c_below_n_signals += 1
                     elif str(spectrum_dict["params"]["ionmode"]) != "Positive":
                         c_polarity += 1
-                    elif not str(spectrum_dict["params"]["name"]).rstrip().endswith(" M+H"):
+                    elif (
+                        not str(spectrum_dict["params"]["name"])
+                        .rstrip()
+                        .endswith(" M+H")
+                    ):
                         c_not_protonated += 1
                     elif not is_centroid(spectrum_dict):
                         c_profile_spec += 1
@@ -167,11 +196,28 @@ def import_from_mgf():
                 except:
                     c_error += 1
 
-        c_removed = c_propagated + c_error + c_multi_charged + c_profile_spec + c_below_n_signals + c_polarity + c_not_protonated
+        c_removed = (
+            c_propagated
+            + c_error
+            + c_multi_charged
+            + c_profile_spec
+            + c_below_n_signals
+            + c_polarity
+            + c_not_protonated
+        )
         print(
             "total spectra={};  total removed={};  few signals={};  error={};  polarity mismatch={};  multi charge={};  propagated spec={};  not M+H={};  profile spec={}".format(
-                len(spectra), c_removed, c_below_n_signals, c_error, c_polarity, c_multi_charged, c_propagated,
-                c_not_protonated, c_profile_spec))
+                len(spectra),
+                c_removed,
+                c_below_n_signals,
+                c_error,
+                c_polarity,
+                c_multi_charged,
+                c_propagated,
+                c_not_protonated,
+                c_profile_spec,
+            )
+        )
 
         # sort spectra by precursor mz
         spectra.sort(key=lambda spec: spec.precursor_mz)
@@ -208,20 +254,24 @@ def generate_pairs(precursor_mz):
     check_mods = len(mod_list) > 0
     for i in range(len(precursor_mz)):
         j = i + 1
-        while (j < len(precursor_mz)) and (precursor_mz[j] <= precursor_mz[i] + max_mz_delta):
+        while (j < len(precursor_mz)) and (
+            precursor_mz[j] <= precursor_mz[i] + max_mz_delta
+        ):
             delta = precursor_mz[j] - precursor_mz[i]
             if delta > 1:
                 # list is sorted by precursor mz so j always > i
                 # first check list of modifications, then specific
                 # select only one specific precursor mz differance or include all
                 if check_mods:
-                  for mod_mz in mod_list:
-                      if (abs(delta - mod_mz) <= abs_mz_tolerance):
-                          yield i
-                          yield j
-                          break
+                    for mod_mz in mod_list:
+                        if abs(delta - mod_mz) <= abs_mz_tolerance:
+                            yield i
+                            yield j
+                            break
 
-                elif (specific_mod_mz < 0) or (abs(delta - specific_mod_mz) <= abs_mz_tolerance):
+                elif (specific_mod_mz < 0) or (
+                    abs(delta - specific_mod_mz) <= abs_mz_tolerance
+                ):
                     yield i
                     yield j
             j += 1
@@ -238,12 +288,12 @@ def load_or_compute_pairs_df(precursor_mz_list=None):
             exit(1)
         # create pairs and randomly subset
         rng = np.random.default_rng(2022)
-        pairs = np.fromiter(
-            generate_pairs(precursor_mz_list),
-            np.uint32).reshape((-1, 2))
+        pairs = np.fromiter(generate_pairs(precursor_mz_list), np.uint32).reshape(
+            (-1, 2)
+        )
         pairs = rng.choice(pairs, min(len(pairs), n_spectral_pairs), replace=False)
 
-        pairs_df = pd.DataFrame(pairs, columns=['index1', 'index2'])
+        pairs_df = pd.DataFrame(pairs, columns=["index1", "index2"])
         # save pairs to speed up reanalysis
         Path("temp/").mkdir(parents=True, exist_ok=True)
         pairs_df.to_parquet(pairs_filename)
@@ -275,24 +325,18 @@ def compute_similarity(spectra, pairs_df):
             ids_b.append(spectra[j].identifier)
             delta_mz.append(abs(spectra[i].precursor_mz - spectra[j].precursor_mz))
 
-    similarities = pd.DataFrame(
-        {
-            "id1": ids_a,
-            "id2": ids_b,
-            "delta_mz": delta_mz
-        }
-    )
+    similarities = pd.DataFrame({"id1": ids_a, "id2": ids_b, "delta_mz": delta_mz})
 
     tmp = pd.DataFrame(cosines)
-    tmp = tmp.add_prefix('cos_')
+    tmp = tmp.add_prefix("cos_")
     similarities = similarities.join(tmp)
 
     tmp = pd.DataFrame(modified_cosines)
-    tmp = tmp.add_prefix('mod_')
+    tmp = tmp.add_prefix("mod_")
     similarities = similarities.join(tmp)
 
     tmp = pd.DataFrame(neutral_losses)
-    tmp = tmp.add_prefix('nl_')
+    tmp = tmp.add_prefix("nl_")
     similarities = similarities.join(tmp)
     print(len(similarities))
     return similarities
@@ -303,7 +347,9 @@ def compute_similarity_parallel(pairs_df, num_of_processes=-1):
         num_of_processes = pathos.multiprocessing.cpu_count()
     with Pool(num_of_processes) as pool:
         data_split = np.array_split(pairs_df, num_of_processes)
-        similarities = pd.concat(pool.uimap(load_spectra_compute_similarity, data_split))
+        similarities = pd.concat(
+            pool.uimap(load_spectra_compute_similarity, data_split)
+        )
         return similarities
 
 
