@@ -21,8 +21,8 @@ import bile_mods
 
 
 # public parameters
-# library_file = "../data/BILELIB19.mgf"
-library_file = "../data/20220418_ALL_GNPS_NO_PROPOGATED.mgf"
+library_file = "../data/BILELIB19.mgf"
+# library_file = "../data/20220418_ALL_GNPS_NO_PROPOGATED.mgf"
 
 # analysis name
 analysis_name = "all"
@@ -31,7 +31,7 @@ analysis_name = "all"
 apply_sqrt = False
 
 # size of subset of spectral pairs
-n_spectral_pairs = 5000000
+n_spectral_pairs = 10
 
 # minimum number of signals only removes the spectra with less
 min_n_signals = 6
@@ -343,14 +343,17 @@ def compute_similarity(spectra, pairs_df):
     similarities = pd.DataFrame({"id1": ids_a, "id2": ids_b, "delta_mz": delta_mz})
 
     tmp = pd.DataFrame(cosines)
+    tmp.drop(["matched_indices", "matched_indices_other"], axis=1, inplace=True)
     tmp = tmp.add_prefix("cos_")
     similarities = similarities.join(tmp)
 
     tmp = pd.DataFrame(modified_cosines)
+    tmp.drop(["matched_indices", "matched_indices_other"], axis=1, inplace=True)
     tmp = tmp.add_prefix("mod_")
     similarities = similarities.join(tmp)
 
     tmp = pd.DataFrame(neutral_losses)
+    tmp.drop(["matched_indices", "matched_indices_other"], axis=1, inplace=True)
     tmp = tmp.add_prefix("nl_")
     similarities = similarities.join(tmp)
     print(len(similarities))
