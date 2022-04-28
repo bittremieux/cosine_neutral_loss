@@ -230,7 +230,7 @@ def _cosine_fast(
     total_intensity = 0.0
     matched_intensity = 0.0
     max_contribution = 0.0
-    # signals with contribution to cosine score greater 5%
+    # signals with contribution to cosine score greater 2%
     n_greq_2p = 0
 
     row_mask = np.zeros_like(row_ind, np.bool_)

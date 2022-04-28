@@ -1,11 +1,15 @@
 import os
-import pathos.multiprocessing
 import sys
 from pathlib import Path
 
 # Make sure all code is in the PATH.
 sys.path.append("../src/")
 
+
+# from multiprocessing import Pool, freeze_support
+# from multiprocessing import freeze_support
+from pathos.multiprocessing import ProcessingPool as Pool
+import pathos.multiprocessing
 import numba as nb
 import numpy as np
 import pandas as pd
@@ -15,23 +19,19 @@ import spectrum_utils.spectrum as sus
 import similarity
 import bile_mods
 
-# from multiprocessing import Pool, freeze_support
-# from multiprocessing import freeze_support
-from functools import partial
-from pathos.multiprocessing import ProcessingPool as Pool
 
 # public parameters
-library_file = "../data/BILELIB19.mgf"
-# library_file = "../data/20220418_ALL_GNPS_NO_PROPOGATED.mgf"
+# library_file = "../data/BILELIB19.mgf"
+library_file = "../data/20220418_ALL_GNPS_NO_PROPOGATED.mgf"
 
 # analysis name
-analysis_name = "as_exchange"
+analysis_name = "all"
 
 # square root transformation of intensities is often performed to limit the impact of high abundant signals
-apply_sqrt = True
+apply_sqrt = False
 
 # size of subset of spectral pairs
-n_spectral_pairs = 500000
+n_spectral_pairs = 5000000
 
 # minimum number of signals only removes the spectra with less
 min_n_signals = 6
@@ -40,27 +40,34 @@ min_n_signals = 6
 abs_mz_tolerance = 0.02
 # only allow precursor mz difference of:
 max_mz_delta = 200
+min_mz_delta = 4.0
+
 # if defined, we will only search for specific delta m/z between two spectra
 # 16 oxygen 15.994914
 # otherwise define as -1
 # specific_mod_mz = 15.9949
+# specific_mod_mz = 180.063388-18.010564  # hexose
+# specific_mod_mz = 14.01566
+# specific_mod_mz = 18.010564
+# specific_mod_mz = 42.01056 # acetic acid
 specific_mod_mz = -1
 
 # free bile acids compared to conjugated with amino acids
 # or different delta mz between different conjugated bile acids
-# mod_list = np.empty(0, float)
+mod_list = np.empty(0, float)
 # mod_list = bile_mods.get_as_mods()
-mod_list = bile_mods.get_as_exchange()
+# mod_list = bile_mods.get_as_exchange()
 
 library_file_name_without_ext = Path(library_file).stem
 # analysis ID is used for file export
 if specific_mod_mz <= 0:
-    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}maxdelta_{}mods".format(
+    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}-{}deltamz_{}mods".format(
         library_file_name_without_ext,
         analysis_name,
         apply_sqrt,
         n_spectral_pairs,
         min_n_signals,
+        min_mz_delta,
         max_mz_delta,
         len(mod_list),
     ).replace(".", "i")
@@ -85,27 +92,21 @@ spectra_filename = "tempspectra/spectra_{}_{}min_signals_sqrt_{}.parquet".format
     library_file_name_without_ext, min_n_signals, apply_sqrt
 )
 
+spectra_id_tsv_filename = "results/spectra_ids_{}_{}min_signals.tsv".format(
+    library_file_name_without_ext, min_n_signals
+)
+
 
 def main():
-    spectra = None
-    precursor_mz_list = None
-    if (os.path.isfile(pairs_filename) == False) or (
-        os.path.isfile(spectra_filename) == False
-    ):
-        # missing either the spectra or pairs file
-        spectra = import_from_mgf()
-
-        # Extract precursor mz as filter argument
-        precursor_mz_list = nb.typed.List()
-        for spectrum in spectra:
-            precursor_mz_list.append(spectrum.precursor_mz)
+    spectra = import_from_mgf()
 
     # compute subset of pairs
-    pairs_df = load_or_compute_pairs_df(precursor_mz_list)
+    pairs_df = load_or_compute_pairs_df(spectra)
     print("Comparing {} pairs".format(len(pairs_df)))
 
     # can run on single thread or parallel
     # similarities = compute_similarity_parallel(pairs_df)
+    print('computing similarities')
     similarities = compute_similarity(spectra, pairs_df)
     save_results(similarities)
 
@@ -134,6 +135,7 @@ def import_from_mgf():
                     # SMILES
                 )
             )
+        print("spectra read from parquet file")
         return spectra
     except:
         print("importing data from{}".format(library_file))
@@ -149,6 +151,9 @@ def import_from_mgf():
         c_polarity = 0
         c_not_protonated = 0
         spectra = []
+        smiles = []
+        inchi = []
+        inchikey = []
         with pyteomics.mgf.MGF(library_file) as f_in:
             for spectrum_dict in tqdm.tqdm(f_in):
                 # ignore:
@@ -179,6 +184,10 @@ def import_from_mgf():
                         intensities = spectrum_dict["intensity array"]
                         if apply_sqrt:
                             intensities = np.sqrt(intensities)
+
+                        inchikey.append(spectrum_dict["params"]["inchiaux"])
+                        smiles.append(spectrum_dict["params"]["smiles"])
+                        inchi.append(spectrum_dict["params"]["inchi"])
                         spectra.append(
                             sus.MsmsSpectrum(
                                 spectrum_dict["params"]["spectrumid"],
@@ -219,6 +228,17 @@ def import_from_mgf():
             )
         )
 
+        # save to csv ID and structures before sorting
+        print("saving tsv file with spectrum ids")
+        id_df = pd.DataFrame()
+        id_df["id"] = [s.identifier for s in spectra]
+        id_df["mz"] = [s.precursor_mz for s in spectra]
+        id_df["smiles"] = smiles
+        id_df["inchi"] = inchi
+        id_df["inchi_key"] = inchikey
+        Path("results/").mkdir(parents=True, exist_ok=True)
+        id_df.to_csv(spectra_id_tsv_filename, sep="\t")
+
         # sort spectra by precursor mz
         spectra.sort(key=lambda spec: spec.precursor_mz)
 
@@ -258,7 +278,7 @@ def generate_pairs(precursor_mz):
             precursor_mz[j] <= precursor_mz[i] + max_mz_delta
         ):
             delta = precursor_mz[j] - precursor_mz[i]
-            if delta > 1:
+            if delta >= min_mz_delta:
                 # list is sorted by precursor mz so j always > i
                 # first check list of modifications, then specific
                 # select only one specific precursor mz differance or include all
@@ -277,15 +297,19 @@ def generate_pairs(precursor_mz):
             j += 1
 
 
-def load_or_compute_pairs_df(precursor_mz_list=None):
+def load_or_compute_pairs_df(spectra):
     # try to load precomputed pairs
     try:
         pairs_df = pd.read_parquet(pairs_filename)
+        print('pairs loaded from parquet')
         return pairs_df
     except:
-        if (precursor_mz_list is None) or (len(precursor_mz_list) <= 0):
-            print("precursor list was None but file read was not successful")
-            exit(1)
+        print('computing pairs')
+        # Extract precursor mz as filter argument
+        precursor_mz_list = nb.typed.List()
+        for spectrum in spectra:
+            precursor_mz_list.append(spectrum.precursor_mz)
+
         # create pairs and randomly subset
         rng = np.random.default_rng(2022)
         pairs = np.fromiter(generate_pairs(precursor_mz_list), np.uint32).reshape(
@@ -293,6 +317,7 @@ def load_or_compute_pairs_df(precursor_mz_list=None):
         )
         pairs = rng.choice(pairs, min(len(pairs), n_spectral_pairs), replace=False)
 
+        print('saving pairs to file for fast reload')
         pairs_df = pd.DataFrame(pairs, columns=["index1", "index2"])
         # save pairs to speed up reanalysis
         Path("temp/").mkdir(parents=True, exist_ok=True)
@@ -306,8 +331,6 @@ def load_spectra_compute_similarity(pairs_df):
 
 
 def compute_similarity(spectra, pairs_df):
-    if spectra is None:
-        spectra = import_from_mgf()
     # common columns
     ids_a, ids_b, delta_mz = [], [], []
     # lists of SimilarityTuples
