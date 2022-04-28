@@ -20,10 +20,11 @@ SimilarityTuple = collections.namedtuple(
         "score",
         "matched_intensity",
         "max_contribution",
-        "n_greq_2p",
-        "matches"
-        # ,"matched_indices", "matched_indices_other"
-    ],
+        "n_greq_2p",  # signals contributing >= 2% score
+        "matches",  # number of matches
+        "matched_indices",
+        "matched_indices_other"
+    ]
 )
 
 
@@ -46,9 +47,9 @@ def cosine(
 
     Returns
     -------
-    Tuple[float, float, Tuple[np.ndarray, np.ndarray]]
-        A tuple consisting of (i) the cosine similarity between both spectra, (ii) the relative matched intensity,
-        and (iii) a tuple with arrays of the matching peak indexes in the first and second spectrum, respectively.
+    SimilarityTuple[float, float, float, int, int, np.ndarray, np.ndarray]
+        A tuple consisting of the cosine similarity between both spectra, matched intensity, maximum contribution by a
+        signal pair, matched signals, and arrays of the matching peak indexes in the first and second spectrum.
     """
     return _cosine(spectrum1, spectrum2, fragment_mz_tolerance, False)
 
@@ -72,9 +73,9 @@ def modified_cosine(
 
     Returns
     -------
-    Tuple[float, float, Tuple[np.ndarray, np.ndarray]]
-        A tuple consisting of (i) the cosine similarity between both spectra, (ii) the relative matched intensity,
-        and (iii) a tuple with arrays of the matching peak indexes in the first and second spectrum, respectively.
+    SimilarityTuple[float, float, float, int, int, np.ndarray, np.ndarray]
+        A tuple consisting of the cosine similarity between both spectra, matched intensity, maximum contribution by a
+        signal pair, matched signals, and arrays of the matching peak indexes in the first and second spectrum.
     """
     return _cosine(spectrum1, spectrum2, fragment_mz_tolerance, True)
 
@@ -98,9 +99,9 @@ def neutral_loss(
 
     Returns
     -------
-    Tuple[float, float, Tuple[np.ndarray, np.ndarray]]
-        A tuple consisting of (i) the cosine similarity between both spectra, (ii) the relative matched intensity,
-        and (iii) a tuple with arrays of the matching peak indexes in the first and second spectrum, respectively.
+    SimilarityTuple[float, float, float, int, int, np.ndarray, np.ndarray]
+        A tuple consisting of the cosine similarity between both spectra, matched intensity, maximum contribution by a
+        signal pair, matched signals, and arrays of the matching peak indexes in the first and second spectrum.
     """
     # Convert peaks to neutral loss.
     spectrum1 = utils.spec_to_neutral_loss(spectrum1)
@@ -130,9 +131,9 @@ def _cosine(
 
     Returns
     -------
-    Tuple[float, float, Tuple[np.ndarray, np.ndarray]]
-        A tuple consisting of (i) the cosine similarity between both spectra, (ii) the relative matched intensity,
-        and (iii) a tuple with arrays of the matching peak indexes in the first and second spectrum, respectively.
+    SimilarityTuple[float, float, float, int, int, np.ndarray, np.ndarray]
+        A tuple consisting of the cosine similarity between both spectra, matched intensity, maximum contribution by a
+        signal pair, matched signals, and arrays of the matching peak indexes in the first and second spectrum.
     """
     spec_tup1 = SpectrumTuple(
         spectrum1.precursor_mz,
@@ -173,8 +174,9 @@ def _cosine_fast(
 
     Returns
     -------
-    SimilarityTuple the score, matched intensity, maximum, contribution of a signal pair, signals contributing more than
-     2%, and indices of matched signals
+    SimilarityTuple[float, float, float, int, int, np.ndarray, np.ndarray]
+        A tuple consisting of the cosine similarity between both spectra, matched intensity, maximum contribution by a
+        signal pair, matched signals, and arrays of the matching peak indexes in the first and second spectrum.
     """
     # Find the matching peaks between both spectra, optionally allowing for
     # shifted peaks.
@@ -230,7 +232,7 @@ def _cosine_fast(
     total_intensity = 0.0
     matched_intensity = 0.0
     max_contribution = 0.0
-    # signals with contribution to cosine score greater 5%
+    # signals with contribution to cosine score greater 2%
     n_greq_2p = 0
 
     row_mask = np.zeros_like(row_ind, np.bool_)
@@ -255,6 +257,7 @@ def _cosine_fast(
         matched_intensity,
         max_contribution,
         n_greq_2p,
-        matches
-        # , row_ind[row_mask], col_ind[col_mask]
+        matches,
+        row_ind[row_mask],
+        col_ind[col_mask]
     )
