@@ -118,6 +118,7 @@ def is_centroid(spectrum_dict):
 
 def import_from_mgf():
     try:
+        # read filtered spectra from file
         spec_df = pd.read_parquet(spectra_filename)
         spectra = []
         for index, spec in spec_df.iterrows():
@@ -128,11 +129,6 @@ def import_from_mgf():
                     spec["charge"],
                     spec["mzs"],
                     spec["intensities"]
-                    # IONMODE=Positive
-                    # LIBRARYQUALITY=4
-                    # SPECTRUMID
-                    # NAME
-                    # SMILES
                 )
             )
         print("spectra read from parquet file")
@@ -188,20 +184,16 @@ def import_from_mgf():
                         inchikey.append(spectrum_dict["params"]["inchiaux"])
                         smiles.append(spectrum_dict["params"]["smiles"])
                         inchi.append(spectrum_dict["params"]["inchi"])
-                        spectra.append(
-                            sus.MsmsSpectrum(
-                                spectrum_dict["params"]["spectrumid"],
-                                float(spectrum_dict["params"]["pepmass"][0]),
-                                int(spectrum_dict["params"]["charge"][0]),
-                                spectrum_dict["m/z array"],
-                                intensities,
-                                # IONMODE=Positive
-                                # LIBRARYQUALITY=4
-                                # SPECTRUMID
-                                # NAME
-                                # SMILES
-                            )
+                        spec = sus.MsmsSpectrum(
+                            spectrum_dict["params"]["spectrumid"],
+                            float(spectrum_dict["params"]["pepmass"][0]),
+                            int(spectrum_dict["params"]["charge"][0]),
+                            spectrum_dict["m/z array"],
+                            intensities
                         )
+                        # remove residual precursor signals with potential isotope pattern
+                        spec.remove_precursor_peak(4, "Da")
+                        spectra.append(spec)
                 except:
                     c_error += 1
 
