@@ -1,8 +1,7 @@
 from rdkit import Chem
-from rdkit.Chem import AllChem
 from rdkit import DataStructs
-from rdkit.Chem.Fingerprints import FingerprintMols
 import pandas as pd
+from functools import lru_cache
 
 def main():
     # scores_df = pd.read_csv("corr/small_6s_filterPrec_sqrt.csv")
@@ -31,11 +30,40 @@ def main():
     #     b = row["SMILES_b"]
 
 
-def calc_fingerprint(smi):
+@lru_cache(maxsize=None)
+def get_mol_struc(smiles: str, inchi: str):
+    """
+
+    Parameters
+    ----------
+    smiles smiles is tried first
+    inchi inchi is tried second
+
+    Returns rdkit mol object
+    -------
+
+    """
+    try:
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is not None:
+            return mol
+    except:
+        pass
+    try:
+        mol = Chem.MolFromInchi(inchi)
+        if mol is not None:
+            return mol
+    except:
+        pass
+    return None
+
+
+@lru_cache(maxsize=None)
+def calc_fingerprint(mol):
     # alternative fingerprint
     # return AllChem.GetMorganFingerprintAsBitVect(to_mol(a), 3, nBits=1024)
     try:
-        return Chem.RDKFingerprint(to_mol(smi))
+        return Chem.RDKFingerprint(mol)
     except:
         return None
 
@@ -48,10 +76,11 @@ def get_fingerprint(fp_map, a):
     return fp
 
 
-def compute_tanimoto(fp_map, a, b) -> float:
+@lru_cache(maxsize=None)
+def compute_tanimoto(mola, molb) -> float:
     try:
-        fpa = fp_map.get(a)
-        fpb = fp_map.get(b)
+        fpa = calc_fingerprint(mola)
+        fpb = calc_fingerprint(molb)
         return round(DataStructs.TanimotoSimilarity(fpa, fpb), 4)
     # DataStructs.FingerprintSimilarity(fps[0],fps[1], metric=DataStructs.DiceSimilarity)
     except:

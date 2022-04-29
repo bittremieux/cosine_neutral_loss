@@ -14,30 +14,34 @@ import numba as nb
 import numpy as np
 import pandas as pd
 import pyteomics.mgf
-import tqdm
+from tqdm import tqdm
+
 import spectrum_utils.spectrum as sus
 import similarity
 import bile_mods
+import structure_similarity as struc_sim
 
+# activate pandas progress_apply
+tqdm.pandas()
 
 # public parameters
 library_file = "../data/BILELIB19.mgf"
 # library_file = "../data/20220418_ALL_GNPS_NO_PROPOGATED.mgf"
 
 # analysis name
-analysis_name = "all"
-
 # square root transformation of intensities is often performed to limit the impact of high abundant signals
-apply_sqrt = False
-
 # size of subset of spectral pairs
-n_spectral_pairs = 10
-
 # minimum number of signals only removes the spectra with less
-min_n_signals = 6
-
 # signal alignment tolerance
+analysis_name = "all"
+apply_sqrt = False
+n_spectral_pairs = 50
+min_n_signals = 6
 abs_mz_tolerance = 0.02
+
+# structure can be parsed by RDKit
+require_structure = True
+
 # only allow precursor mz difference of:
 max_mz_delta = 200
 min_mz_delta = 4.0
@@ -61,23 +65,25 @@ mod_list = np.empty(0, float)
 library_file_name_without_ext = Path(library_file).stem
 # analysis ID is used for file export
 if specific_mod_mz <= 0:
-    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}-{}deltamz_{}mods".format(
+    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}requirestruc_{}-{}deltamz_{}mods".format(
         library_file_name_without_ext,
         analysis_name,
         apply_sqrt,
         n_spectral_pairs,
         min_n_signals,
+        require_structure,
         min_mz_delta,
         max_mz_delta,
         len(mod_list),
     ).replace(".", "i")
 else:
-    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}specific_delta_{}mods".format(
+    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}requirestruc_{}specific_delta_{}mods".format(
         library_file_name_without_ext,
         analysis_name,
         apply_sqrt,
         n_spectral_pairs,
         min_n_signals,
+        require_structure,
         specific_mod_mz,
         len(mod_list),
     ).replace(".", "i")
@@ -146,10 +152,12 @@ def import_from_mgf():
         c_below_n_signals = 0
         c_polarity = 0
         c_not_protonated = 0
+        c_no_structure = 0
         spectra = []
         smiles = []
         inchi = []
         inchikey = []
+        mol_structures = []
         with pyteomics.mgf.MGF(library_file) as f_in:
             for spectrum_dict in tqdm.tqdm(f_in):
                 # ignore:
@@ -177,29 +185,38 @@ def import_from_mgf():
                     elif not is_centroid(spectrum_dict):
                         c_profile_spec += 1
                     else:
-                        intensities = spectrum_dict["intensity array"]
-                        if apply_sqrt:
-                            intensities = np.sqrt(intensities)
+                        inchiaux_ = spectrum_dict["params"]["inchiaux"]
+                        smiles_ = spectrum_dict["params"]["smiles"]
+                        inchi_ = spectrum_dict["params"]["inchi"]
+                        mol = struc_sim.get_mol_struc(smiles_, inchi_)
+                        if require_structure and mol:
+                            c_no_structure += 1
+                        else:
+                            intensities = spectrum_dict["intensity array"]
+                            if apply_sqrt:
+                                intensities = np.sqrt(intensities)
 
-                        inchikey.append(spectrum_dict["params"]["inchiaux"])
-                        smiles.append(spectrum_dict["params"]["smiles"])
-                        inchi.append(spectrum_dict["params"]["inchi"])
-                        spec = sus.MsmsSpectrum(
-                            spectrum_dict["params"]["spectrumid"],
-                            float(spectrum_dict["params"]["pepmass"][0]),
-                            int(spectrum_dict["params"]["charge"][0]),
-                            spectrum_dict["m/z array"],
-                            intensities
-                        )
-                        # remove residual precursor signals with potential isotope pattern
-                        spec.remove_precursor_peak(4, "Da")
-                        spectra.append(spec)
+                            inchikey.append(inchiaux_)
+                            smiles.append(smiles_)
+                            inchi.append(inchi_)
+                            mol_structures.append(mol)
+                            spec = sus.MsmsSpectrum(
+                                spectrum_dict["params"]["spectrumid"],
+                                float(spectrum_dict["params"]["pepmass"][0]),
+                                int(spectrum_dict["params"]["charge"][0]),
+                                spectrum_dict["m/z array"],
+                                intensities
+                            )
+                            # remove residual precursor signals with potential isotope pattern
+                            spec.remove_precursor_peak(4, "Da")
+                            spectra.append(spec)
                 except:
                     c_error += 1
 
         c_removed = (
             c_propagated
             + c_error
+            + c_no_structure
             + c_multi_charged
             + c_profile_spec
             + c_below_n_signals
@@ -207,11 +224,12 @@ def import_from_mgf():
             + c_not_protonated
         )
         print(
-            "total spectra={};  total removed={};  few signals={};  error={};  polarity mismatch={};  multi charge={};  propagated spec={};  not M+H={};  profile spec={}".format(
+            "total spectra={};  total removed={};  few signals={};  error={}; no structure (only if active)={};  polarity mismatch={};  multi charge={};  propagated spec={};  not M+H={};  profile spec={}".format(
                 len(spectra),
                 c_removed,
                 c_below_n_signals,
                 c_error,
+                c_no_structure,
                 c_polarity,
                 c_multi_charged,
                 c_propagated,
@@ -288,6 +306,27 @@ def generate_pairs(precursor_mz):
                     yield j
             j += 1
 
+def calc_tanimoto_row(pair, spectra, id_mol_dict):
+    # spectrum.identifier is the library ID
+    a = spectra[pair["index1"]].identifier
+    b = spectra[pair["index2"]].identifier
+    mola = id_mol_dict.get(a)
+    molb = id_mol_dict.get(b)
+    if mola and molb:
+        return struc_sim.calc_tanimoto(mola, molb)
+    return None
+
+def calc_tanimoto(spectra, pairs_df):
+    # import ID to smiles / inchi df
+    print("calculating structure tanimoto score")
+    id_struc_df = pd.read_parquet(spectra_id_tsv_filename)
+    id_struc_df["mol"] = id_struc_df.apply(lambda row: struc_sim.get_mol_struc(row["smiles"], row["inchi"]), axis=1)
+
+    id_mol_dict = pd.Series(id_struc_df.mol.values,index=id_struc_df.id).to_dict()
+
+    pairs_df["tanimoto"] = pairs_df.progress_apply(lambda row: calc_tanimoto_row(row, spectra, id_mol_dict), axis=1)
+    return pairs_df
+
 
 def load_or_compute_pairs_df(spectra):
     # try to load precomputed pairs
@@ -310,8 +349,9 @@ def load_or_compute_pairs_df(spectra):
         pairs = rng.choice(pairs, min(len(pairs), n_spectral_pairs), replace=False)
 
         print('saving pairs to file for fast reload')
-        pairs_df = pd.DataFrame(pairs, columns=["index1", "index2"])
         # save pairs to speed up reanalysis
+        pairs_df = pd.DataFrame(pairs, columns=["index1", "index2"])
+        pairs_df = calc_tanimoto(spectra, pairs_df)
         Path("temp/").mkdir(parents=True, exist_ok=True)
         pairs_df.to_parquet(pairs_filename)
         return pairs_df
@@ -327,7 +367,7 @@ def compute_similarity(spectra, pairs_df):
     ids_a, ids_b, delta_mz = [], [], []
     # lists of SimilarityTuples
     cosines, modified_cosines, neutral_losses = [], [], []
-    for i, j in tqdm.tqdm(zip(pairs_df["index1"], pairs_df["index2"])):
+    for i, j in tqdm(zip(pairs_df["index1"], pairs_df["index2"])):
         # calculate scores and add to lists
         cos = similarity.cosine(spectra[i], spectra[j], abs_mz_tolerance)
         mod_cos = similarity.modified_cosine(spectra[i], spectra[j], abs_mz_tolerance)
@@ -341,6 +381,7 @@ def compute_similarity(spectra, pairs_df):
             delta_mz.append(abs(spectra[i].precursor_mz - spectra[j].precursor_mz))
 
     similarities = pd.DataFrame({"id1": ids_a, "id2": ids_b, "delta_mz": delta_mz})
+    similarities["tanimoto"] = pairs_df["tanimoto"]
 
     tmp = pd.DataFrame(cosines)
     tmp.drop(["matched_indices", "matched_indices_other"], axis=1, inplace=True)
