@@ -28,6 +28,8 @@ tqdm.pandas()
 library_file = "../data/BILELIB19.mgf"
 # library_file = "../data/20220418_ALL_GNPS_NO_PROPOGATED.mgf"
 
+replace_old_files = True
+
 # analysis name
 # square root transformation of intensities is often performed to limit the impact of high abundant signals
 # size of subset of spectral pairs
@@ -35,7 +37,7 @@ library_file = "../data/BILELIB19.mgf"
 # signal alignment tolerance
 analysis_name = "all"
 apply_sqrt = False
-n_spectral_pairs = 50
+n_spectral_pairs = 500000
 min_n_signals = 6
 abs_mz_tolerance = 0.02
 
@@ -65,7 +67,7 @@ mod_list = np.empty(0, float)
 library_file_name_without_ext = Path(library_file).stem
 # analysis ID is used for file export
 if specific_mod_mz <= 0:
-    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}requirestruc_{}-{}deltamz_{}mods".format(
+    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}_requirestruc_{}-{}deltamz_{}mods".format(
         library_file_name_without_ext,
         analysis_name,
         apply_sqrt,
@@ -77,7 +79,7 @@ if specific_mod_mz <= 0:
         len(mod_list),
     ).replace(".", "i")
 else:
-    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}requirestruc_{}specific_delta_{}mods".format(
+    analysis_id = "{}_{}_sqrt_{}_{}pairs_{}min_signals_{}_requirestruc_{}specific_delta_{}mods".format(
         library_file_name_without_ext,
         analysis_name,
         apply_sqrt,
@@ -88,22 +90,30 @@ else:
         len(mod_list),
     ).replace(".", "i")
 
+results_file = "results/{}.parquet".format(analysis_id)
+
 # output filename of pairs only with pair selection relevant parameters:
 pairs_filename = (
-    "temp/{}_pairs.parquet".format(analysis_id)
+    "temp/pairs_{}.parquet".format(analysis_id)
     .replace("sqrt_True_", "")
     .replace("sqrt_False_", "")
 )
-spectra_filename = "tempspectra/spectra_{}_{}min_signals_sqrt_{}.parquet".format(
-    library_file_name_without_ext, min_n_signals, apply_sqrt
+spectra_filename = "tempspectra/spectra_{}_{}min_signals_sqrt_{}_{}_requirestruc.parquet".format(
+    library_file_name_without_ext, min_n_signals, apply_sqrt, require_structure
 )
 
-spectra_id_tsv_filename = "results/spectra_ids_{}_{}min_signals.tsv".format(
-    library_file_name_without_ext, min_n_signals
+spectra_id_tsv_filename = "results/spectra_ids_{}_{}min_signals_{}_requirestruc.tsv".format(
+    library_file_name_without_ext, min_n_signals, require_structure
 )
 
 
 def main():
+    if replace_old_files:
+        Path(results_file).unlink(missing_ok=True)
+        Path(spectra_id_tsv_filename).unlink(missing_ok=True)
+        Path(spectra_filename).unlink(missing_ok=True)
+        Path(pairs_filename).unlink(missing_ok=True)
+
     spectra = import_from_mgf()
 
     # compute subset of pairs
@@ -159,7 +169,7 @@ def import_from_mgf():
         inchikey = []
         mol_structures = []
         with pyteomics.mgf.MGF(library_file) as f_in:
-            for spectrum_dict in tqdm.tqdm(f_in):
+            for spectrum_dict in tqdm(f_in):
                 # ignore:
                 #   - propagated spectra with LIBRARYQUALITY==4
                 #   - multiple charged molecules
@@ -189,7 +199,7 @@ def import_from_mgf():
                         smiles_ = spectrum_dict["params"]["smiles"]
                         inchi_ = spectrum_dict["params"]["inchi"]
                         mol = struc_sim.get_mol_struc(smiles_, inchi_)
-                        if require_structure and mol:
+                        if require_structure and not mol:
                             c_no_structure += 1
                         else:
                             intensities = spectrum_dict["intensity array"]
@@ -260,7 +270,7 @@ def import_from_mgf():
         spec_df["charge"] = spec_df["spectra"].apply(lambda s: s.precursor_charge)
         spec_df["mzs"] = spec_df["spectra"].apply(lambda s: s.mz)
         spec_df["intensities"] = spec_df["spectra"].apply(lambda s: s.intensity)
-        spec_df = spec_df.drop("spectra", 1)
+        spec_df = spec_df.drop("spectra", axis=1)
         spec_df.to_parquet(spectra_filename)
 
         return spectra
@@ -319,7 +329,7 @@ def calc_tanimoto_row(pair, spectra, id_mol_dict):
 def calc_tanimoto(spectra, pairs_df):
     # import ID to smiles / inchi df
     print("calculating structure tanimoto score")
-    id_struc_df = pd.read_parquet(spectra_id_tsv_filename)
+    id_struc_df = pd.read_csv(spectra_id_tsv_filename, sep="\t")
     id_struc_df["mol"] = id_struc_df.apply(lambda row: struc_sim.get_mol_struc(row["smiles"], row["inchi"]), axis=1)
 
     id_mol_dict = pd.Series(id_struc_df.mol.values,index=id_struc_df.id).to_dict()
@@ -413,11 +423,10 @@ def compute_similarity_parallel(pairs_df, num_of_processes=-1):
 
 
 def save_results(similarities):
-    fname = "results/{}.parquet".format(analysis_id)
     Path("results/").mkdir(parents=True, exist_ok=True)
-    similarities.to_parquet(fname)
+    similarities.to_parquet(results_file)
     similarities.head(5)
-    print("Results saved to {}".format(fname))
+    print("Results saved to {}".format(results_file))
 
 
 if __name__ == "__main__":

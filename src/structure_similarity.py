@@ -16,7 +16,7 @@ def main():
     nodes["fp"] = [calc_fingerprint(smi) for smi in nodes["smiles"]]
     smi_to_fp_dict = pd.Series(nodes["fp"].values, index=nodes["id"]).to_dict()
 
-    scores_df["tanimoto"] = [compute_tanimoto(smi_to_fp_dict, a, b) for a,b in zip(scores_df['id1'], scores_df['id2'])]
+    scores_df["tanimoto"] = [calc_tanimoto(smi_to_fp_dict, a, b) for a, b in zip(scores_df['id1'], scores_df['id2'])]
     # scores_df["tanimoto"] = [compute_tanimoto(fp_map, a,b) for a,b in zip(scores_df['SMILES_a'], scores_df[
     #     'SMILES_b'])]
 
@@ -77,7 +77,7 @@ def get_fingerprint(fp_map, a):
 
 
 @lru_cache(maxsize=None)
-def compute_tanimoto(mola, molb) -> float:
+def calc_tanimoto(mola, molb) -> float:
     try:
         fpa = calc_fingerprint(mola)
         fpb = calc_fingerprint(molb)
