@@ -1,7 +1,8 @@
-from rdkit import Chem
-from rdkit import DataStructs
-import pandas as pd
 from functools import lru_cache
+
+import pandas as pd
+from rdkit import Chem, DataStructs
+
 
 def main():
     # scores_df = pd.read_csv("corr/small_6s_filterPrec_sqrt.csv")
@@ -10,13 +11,16 @@ def main():
 
     scores_df = pd.read_parquet("corr/")
     nodes = pd.read_csv("corr/BILE_6s_filterPrec_sqrt_nodes.csv")
-    print (scores_df.head(5))
+    print(scores_df.head(5))
 
     # map fingerprint to ID
     nodes["fp"] = [calc_fingerprint(smi) for smi in nodes["smiles"]]
     smi_to_fp_dict = pd.Series(nodes["fp"].values, index=nodes["id"]).to_dict()
 
-    scores_df["tanimoto"] = [calc_tanimoto(smi_to_fp_dict, a, b) for a, b in zip(scores_df['id1'], scores_df['id2'])]
+    scores_df["tanimoto"] = [
+        calc_tanimoto(smi_to_fp_dict, a, b)
+        for a, b in zip(scores_df["id1"], scores_df["id2"])
+    ]
     # scores_df["tanimoto"] = [compute_tanimoto(fp_map, a,b) for a,b in zip(scores_df['SMILES_a'], scores_df[
     #     'SMILES_b'])]
 
@@ -86,14 +90,16 @@ def calc_tanimoto(mola, molb) -> float:
     except:
         return None
 
+
 def to_mol(smi: str) -> Chem.rdchem.Mol:
     return Chem.MolFromSmiles(smi)
+
 
 def to_canon_smiles(smiles: str) -> str:
     try:
         return Chem.CanonSmiles(smiles)
     except:
-        print('Invalid SMILES:', smiles)
+        print("Invalid SMILES:", smiles)
         return None
 
 
