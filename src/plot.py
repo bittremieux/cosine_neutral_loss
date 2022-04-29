@@ -60,7 +60,12 @@ def plot_mirror(
     else:
         raise ValueError("Unknown score specified")
 
-    _annotate_matching_peaks(spectrum1, spectrum2, *sim[1])
+    _annotate_matching_peaks(
+        spectrum1,
+        spectrum2,
+        sim.matched_indices,
+        sim.matched_indices_other,
+    )
 
     sup.mirror(spectrum1, spectrum2, ax=ax)
     ax.set_title(title)
