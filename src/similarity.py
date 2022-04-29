@@ -1,5 +1,4 @@
 import collections
-from typing import Tuple
 
 import numba as nb
 import numpy as np
@@ -23,7 +22,7 @@ SimilarityTuple = collections.namedtuple(
         "n_greq_2p",  # signals contributing >= 2% score
         "matches",  # number of matches
         "matched_indices",
-        "matched_indices_other"
+        "matched_indices_other",
     ]
 )
 
@@ -47,9 +46,11 @@ def cosine(
 
     Returns
     -------
-    SimilarityTuple[float, float, float, int, int, np.ndarray, np.ndarray]
-        A tuple consisting of the cosine similarity between both spectra, matched intensity, maximum contribution by a
-        signal pair, matched signals, and arrays of the matching peak indexes in the first and second spectrum.
+    SimilarityTuple
+        A tuple consisting of the cosine similarity between both spectra,
+        matched intensity, maximum contribution by a signal pair, matched
+        signals, and arrays of the matching peak indexes in the first and
+        second spectrum.
     """
     return _cosine(spectrum1, spectrum2, fragment_mz_tolerance, False)
 
@@ -73,9 +74,11 @@ def modified_cosine(
 
     Returns
     -------
-    SimilarityTuple[float, float, float, int, int, np.ndarray, np.ndarray]
-        A tuple consisting of the cosine similarity between both spectra, matched intensity, maximum contribution by a
-        signal pair, matched signals, and arrays of the matching peak indexes in the first and second spectrum.
+    SimilarityTuple
+        A tuple consisting of the cosine similarity between both spectra,
+        matched intensity, maximum contribution by a signal pair, matched
+        signals, and arrays of the matching peak indexes in the first and
+        second spectrum.
     """
     return _cosine(spectrum1, spectrum2, fragment_mz_tolerance, True)
 
@@ -99,9 +102,11 @@ def neutral_loss(
 
     Returns
     -------
-    SimilarityTuple[float, float, float, int, int, np.ndarray, np.ndarray]
-        A tuple consisting of the cosine similarity between both spectra, matched intensity, maximum contribution by a
-        signal pair, matched signals, and arrays of the matching peak indexes in the first and second spectrum.
+    SimilarityTuple
+        A tuple consisting of the cosine similarity between both spectra,
+        matched intensity, maximum contribution by a signal pair, matched
+        signals, and arrays of the matching peak indexes in the first and
+        second spectrum.
     """
     # Convert peaks to neutral loss.
     spectrum1 = utils.spec_to_neutral_loss(spectrum1)
@@ -131,9 +136,11 @@ def _cosine(
 
     Returns
     -------
-    SimilarityTuple[float, float, float, int, int, np.ndarray, np.ndarray]
-        A tuple consisting of the cosine similarity between both spectra, matched intensity, maximum contribution by a
-        signal pair, matched signals, and arrays of the matching peak indexes in the first and second spectrum.
+    SimilarityTuple
+        A tuple consisting of the cosine similarity between both spectra,
+        matched intensity, maximum contribution by a signal pair, matched
+        signals, and arrays of the matching peak indexes in the first and
+        second spectrum.
     """
     spec_tup1 = SpectrumTuple(
         spectrum1.precursor_mz,
@@ -147,7 +154,9 @@ def _cosine(
         spectrum2.mz,
         np.copy(spectrum2.intensity) / np.linalg.norm(spectrum2.intensity),
     )
-    return _cosine_fast(spec_tup1, spec_tup2, fragment_mz_tolerance, allow_shift)
+    return _cosine_fast(
+        spec_tup1, spec_tup2, fragment_mz_tolerance, allow_shift
+    )
 
 
 @nb.njit(fastmath=True, boundscheck=False)
@@ -174,9 +183,11 @@ def _cosine_fast(
 
     Returns
     -------
-    SimilarityTuple[float, float, float, int, int, np.ndarray, np.ndarray]
-        A tuple consisting of the cosine similarity between both spectra, matched intensity, maximum contribution by a
-        signal pair, matched signals, and arrays of the matching peak indexes in the first and second spectrum.
+    SimilarityTuple
+        A tuple consisting of the cosine similarity between both spectra,
+        matched intensity, maximum contribution by a signal pair, matched
+        signals, and arrays of the matching peak indexes in the first and
+        second spectrum.
     """
     # Find the matching peaks between both spectra, optionally allowing for
     # shifted peaks.
@@ -232,7 +243,7 @@ def _cosine_fast(
     total_intensity = 0.0
     matched_intensity = 0.0
     max_contribution = 0.0
-    # signals with contribution to cosine score greater 2%
+    # Signals with contribution to cosine score greater 2%.
     n_greq_2p = 0
 
     row_mask = np.zeros_like(row_ind, np.bool_)
