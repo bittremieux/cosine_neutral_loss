@@ -1,0 +1,17 @@
+black==22.3.0
+jupyter==1.0.0
+matplotlib==3.5.1
+numba==0.55.1
+numpy==1.21.5
+pandas==1.4.1
+pyarrow==7.0.0
+pyteomics==4.5.3
+scipy==1.8.0
+seaborn==0.11.2
+tqdm==4.64.0
+pathos==0.2.8
+requests==2.27.1
+molmass==2021.6.18
+aiohttp==3.8.1
+rdkit-pypi==2022.3.2
+git+https://github.com/bittremieux/spectrum_utils.git@d1cd4b40e86188971d5736b00fdbe2a2060d04f7
