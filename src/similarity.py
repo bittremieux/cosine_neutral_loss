@@ -23,7 +23,7 @@ SimilarityTuple = collections.namedtuple(
         "matches",  # number of matches
         "matched_indices",
         "matched_indices_other",
-    ]
+    ],
 )
 
 
@@ -225,7 +225,9 @@ def _cosine_fast(
             other_peak_i = other_peak_index[cpi] + index
             while (
                 other_peak_i < len(spec_other.mz)
-                and abs(peak_mz - (spec_other.mz[other_peak_i] + mass_diff[cpi]))
+                and abs(
+                    peak_mz - (spec_other.mz[other_peak_i] + mass_diff[cpi])
+                )
                 <= fragment_mz_tolerance
             ):
                 cost_matrix[peak_index, other_peak_i] = (
@@ -238,9 +240,8 @@ def _cosine_fast(
         row_ind, col_ind = scipy.optimize.linear_sum_assignment(
             cost_matrix, maximize=True
         )
-    matches = 0
+
     score = 0.0
-    total_intensity = 0.0
     matched_intensity = 0.0
     max_contribution = 0.0
     # Signals with contribution to cosine score greater 2%.
@@ -249,26 +250,23 @@ def _cosine_fast(
     row_mask = np.zeros_like(row_ind, np.bool_)
     col_mask = np.zeros_like(col_ind, np.bool_)
     for (i, row), (j, col) in zip(enumerate(row_ind), enumerate(col_ind)):
-        total_intensity += spec.intensity[row] + spec_other.intensity[col]
         pair_score = cost_matrix[row, col]
         if pair_score > 0.0:
             score += pair_score
-            matched_intensity += spec.intensity[row] + spec_other.intensity[col]
+            matched_intensity += (
+                spec.intensity[row] + spec_other.intensity[col]
+            )
             row_mask[i] = col_mask[j] = True
-            matches += 1
-            if pair_score >= 0.02:
-                n_greq_2p += 1
-            if pair_score > max_contribution:
-                max_contribution = pair_score
+            n_greq_2p += pair_score >= 0.02
+            max_contribution = max(max_contribution, pair_score)
+    matched_intensity /= spec.intensity.sum() + spec_other.intensity.sum()
 
-    if total_intensity > 0:
-        matched_intensity = matched_intensity / total_intensity
     return SimilarityTuple(
         score,
         matched_intensity,
         max_contribution,
         n_greq_2p,
-        matches,
+        row_mask.sum(),
         row_ind[row_mask],
-        col_ind[col_mask]
+        col_ind[col_mask],
     )
