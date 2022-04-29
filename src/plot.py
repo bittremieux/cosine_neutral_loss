@@ -50,13 +50,6 @@ def plot_mirror(
         title = f"Neutral loss similarity = {sim[0]:.4f}"
         spectrum1 = utils.spec_to_neutral_loss(spectrum1)
         spectrum2 = utils.spec_to_neutral_loss(spectrum2)
-    elif score == "modified_neutral_loss":
-        sim = similarity.modified_neutral_loss(
-            spectrum1, spectrum2, fragment_mz_tol
-        )
-        title = f"Modified neutral loss similarity = {sim[0]:.4f}"
-        spectrum1 = utils.spec_to_neutral_loss(spectrum1)
-        spectrum2 = utils.spec_to_neutral_loss(spectrum2)
     else:
         raise ValueError("Unknown score specified")
 
