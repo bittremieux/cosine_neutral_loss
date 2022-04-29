@@ -5,7 +5,6 @@ from pathlib import Path
 # Make sure all code is in the PATH.
 sys.path.append("../src/")
 
-
 # from multiprocessing import Pool, freeze_support
 # from multiprocessing import freeze_support
 from pathos.multiprocessing import ProcessingPool as Pool
@@ -25,10 +24,10 @@ import structure_similarity as struc_sim
 tqdm.pandas()
 
 # public parameters
-library_file = "../data/BILELIB19.mgf"
-# library_file = "../data/20220418_ALL_GNPS_NO_PROPOGATED.mgf"
+# library_file = "../data/BILELIB19.mgf"
+library_file = "../data/20220418_ALL_GNPS_NO_PROPOGATED.mgf"
 
-replace_old_files = True
+replace_old_files = False
 
 # analysis name
 # square root transformation of intensities is often performed to limit the impact of high abundant signals
@@ -37,7 +36,7 @@ replace_old_files = True
 # signal alignment tolerance
 analysis_name = "all"
 apply_sqrt = False
-n_spectral_pairs = 500000
+n_spectral_pairs = 2000000
 min_n_signals = 6
 abs_mz_tolerance = 0.02
 
@@ -206,10 +205,6 @@ def import_from_mgf():
                             if apply_sqrt:
                                 intensities = np.sqrt(intensities)
 
-                            inchikey.append(inchiaux_)
-                            smiles.append(smiles_)
-                            inchi.append(inchi_)
-                            mol_structures.append(mol)
                             spec = sus.MsmsSpectrum(
                                 spectrum_dict["params"]["spectrumid"],
                                 float(spectrum_dict["params"]["pepmass"][0]),
@@ -219,7 +214,15 @@ def import_from_mgf():
                             )
                             # remove residual precursor signals with potential isotope pattern
                             spec.remove_precursor_peak(4, "Da")
-                            spectra.append(spec)
+
+                            if len(spec.intensity) < min_n_signals:
+                                c_below_n_signals += 1
+                            else:
+                                spectra.append(spec)
+                                inchikey.append(inchiaux_)
+                                smiles.append(smiles_)
+                                inchi.append(inchi_)
+                                mol_structures.append(mol)
                 except:
                     c_error += 1
 
