@@ -1,5 +1,6 @@
 import collections
 import math
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
@@ -18,7 +19,7 @@ FragmentAnnotation.__str__ = lambda _: ""
 def plot_mirror(
     spectrum1: sus.MsmsSpectrum,
     spectrum2: sus.MsmsSpectrum,
-    score: str,
+    score: Optional[str],
     filename: str,
     fragment_mz_tol: float = 0.1,
 ) -> None:
@@ -31,8 +32,8 @@ def plot_mirror(
         The first spectrum.
     spectrum2 : sus.MsmsSpectrum
         The second spectrum.
-    score : str
-        The similarity score used. Valid values are "cosine",
+    score : Optional[str]
+        The similarity score used. Valid values are `None`, "cosine",
         "modified_cosine", and "neutral_loss".
     filename : str
         Filename to save the figure.
@@ -42,7 +43,9 @@ def plot_mirror(
     """
     fig, axes = plt.subplots(nrows=2, ncols=1, sharex="all", figsize=(8, 4))
 
-    if score == "cosine":
+    if score is None:
+        sim, title = None, " "
+    elif score == "cosine":
         sim = similarity.cosine(spectrum1, spectrum2, fragment_mz_tol)
         title = f"Cosine similarity = {sim[0]:.4f}"
     elif score == "modified_cosine":
@@ -59,25 +62,26 @@ def plot_mirror(
     _annotate_matching_peaks(
         spectrum1,
         spectrum2,
-        sim.matched_indices,
-        sim.matched_indices_other,
+        sim.matched_indices if sim is not None else None,
+        sim.matched_indices_other if sim is not None else None,
         fragment_mz_tol,
     )
 
     # Draw lines between matching peaks.
-    for mz1, mz2 in zip(
-        spectrum1.mz[sim.matched_indices],
-        spectrum2.mz[sim.matched_indices_other],
-    ):
-        ion_type = "b" if abs(mz1 - mz2) < fragment_mz_tol else "y"
-        axes[0].plot(
-            [mz1, mz2],
-            [0, -0.4],
-            c=sup.colors[ion_type],
-            ls="dotted",
-            clip_on=False,
-            zorder=10,
-        )
+    if sim is not None:
+        for mz1, mz2 in zip(
+            spectrum1.mz[sim.matched_indices],
+            spectrum2.mz[sim.matched_indices_other],
+        ):
+            ion_type = "b" if abs(mz1 - mz2) < fragment_mz_tol else "y"
+            axes[0].plot(
+                [mz1, mz2],
+                [0, -0.4],
+                c=sup.colors[ion_type],
+                ls="dotted",
+                clip_on=False,
+                zorder=10,
+            )
 
     sup.spectrum(spectrum1, ax=axes[0])
     sup.spectrum(spectrum2, ax=axes[1], mirror_intensity=True)
@@ -133,6 +137,8 @@ def _annotate_matching_peaks(
     fragment_mz_tol : float
         The fragment mass tolerance to match peaks to each other.
     """
+    if peak_matches1 is None or peak_matches2 is None:
+        return
     spectrum1._annotation = np.full_like(spectrum1.mz, None, object)
     spectrum2._annotation = np.full_like(spectrum2.mz, None, object)
     for match1, match2 in zip(peak_matches1, peak_matches2):
