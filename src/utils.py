@@ -22,7 +22,12 @@ def spec_to_neutral_loss(spectrum: sus.MsmsSpectrum) -> sus.MsmsSpectrum:
     mz, intensity = np.insert(mz, 0, [0]), np.insert(intensity, 0, [0])
     # Create neutral loss peaks and make sure the peaks are in ascending m/z
     # order.
-    mz, intensity = (spectrum.precursor_mz - mz)[::-1], intensity[::-1]
+    # TODO: This assumes [M+H]x charged ions.
+    adduct_mass = 1.007825
+    neutral_mass = (
+        spectrum.precursor_mz - adduct_mass
+    ) * spectrum.precursor_charge
+    mz, intensity = ((neutral_mass + adduct_mass) - mz)[::-1], intensity[::-1]
     return sus.MsmsSpectrum(
         spectrum.identifier,
         spectrum.precursor_mz,
