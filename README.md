@@ -11,9 +11,15 @@ Similarity measures that are currently implemented are:
 - Neutral loss similarity <br/>
    Aisporna, A. _et al_. Neutral loss mass spectral data enhances molecular similarity analysis in METLIN. _Journal of the American Society for Mass Spectrometry_ **33**, 530–534 (2022). [doi:10.1021/jasms.1c00343](https://doi.org/10.1021/jasms.1c00343)
 
+All code is available as open-source under the BSD license.
+
+If you use this software in your work, please cite the following publication:
+
+- Bittremieux, W. _et al._ Comparison of cosine, modified cosine, and neutral loss based spectral alignment for discovery of structurally related molecules. _bioRxiv_ (2022) doi:[10.1101/2022.06.01.494370](https://doi.org/10.1101/2022.06.01.494370).
+
 ## Installation
 
-Create a conda enviroment and install all required dependencies using the provided `environment.yml` file:
+Create a conda environment and install all required dependencies using the provided `environment.yml` file:
 
 ```
 conda env create -f https://raw.githubusercontent.com/bittremieux/cosine_neutral_loss/master/environment.yml
