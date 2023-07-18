@@ -15,7 +15,7 @@ All code is available as open-source under the BSD license.
 
 If you use this software in your work, please cite the following publication:
 
-- Bittremieux, W. _et al._ Comparison of cosine, modified cosine, and neutral loss based spectral alignment for discovery of structurally related molecules. _bioRxiv_ (2022) doi:[10.1101/2022.06.01.494370](https://doi.org/10.1101/2022.06.01.494370).
+- Bittremieux, W. _et al._ Comparison of cosine, modified cosine, and neutral loss based spectral alignment for discovery of structurally related molecules. _Journal of the American Society for Mass Spectrometry_ **33**, 1733–1744 (2022) doi:[10.1021/jasms.2c00153](https://pubs.acs.org/doi/10.1021/jasms.2c00153).
 
 ## Installation
 
