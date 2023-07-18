@@ -65,4 +65,4 @@ For more advanced functionality, see the source code.
 
 ## Contact
 
-For more information you can visit the [official code website](https://github.com/bittremieux/cosine_neutral_loss) or send an email to <wbittremieux@health.ucsd.edu>.
+For more information you can visit the [official code website](https://github.com/bittremieux/cosine_neutral_loss) or send an email to <wout.bittremieux@uantwerpen.be>.
